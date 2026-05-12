@@ -1,4 +1,13 @@
+# Build artifacts
 server
 client
 *.o
-*.dSYM
+*.dSYM/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
