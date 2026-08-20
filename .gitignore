@@ -1,8 +1,12 @@
 # Build artifacts
 server
 client
+test_frame
 *.o
 *.dSYM/
+
+# Local planning docs
+Phase_Plans/
 
 # macOS
 .DS_Store

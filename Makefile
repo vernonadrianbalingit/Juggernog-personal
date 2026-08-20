@@ -1,15 +1,28 @@
 CXX = clang++
 CXXFLAGS = -Wall -Wextra -Werror -O2 -std=c++20
 
-all: server client
+# Common object files
+COMMON_OBJS = frame.o crc32.o
 
-server: server.cpp
-	$(CXX) $(CXXFLAGS) -o server server.cpp
+all: server client test_frame
 
-client: client.cpp
-	$(CXX) $(CXXFLAGS) -o client client.cpp
+# Pattern rule: any .cpp -> .o
+%.o: %.cpp frame.h crc32.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+server: server.o $(COMMON_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+client: client.o $(COMMON_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test_frame: test_frame.o $(COMMON_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+test: test_frame
+	./test_frame
 
 clean:
-	rm -f server client
+	rm -f *.o server client test_frame
 
-.PHONY: all clean
+.PHONY: all clean test
