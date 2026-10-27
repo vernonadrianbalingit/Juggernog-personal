@@ -1,38 +1,32 @@
-#include "frame.h"
-#include "crc32.h"
 #include <cstdio>
 #include <cstring>
 #include <string>
+
+#include "crc32.h"
+#include "frame.h"
 using namespace juggernog;
-namespace
-{
-  int tests_run = 0;
-  int tests_failed = 0;
-  void check(bool cond, const char *name)
-  {
-    ++tests_run;
-    if (cond)
-    {
-      std::printf("PASS: %s\n", name);
-    }
-    else
-    {
-      ++tests_failed;
-      std::printf("FAIL: %s\n", name);
-    }
+namespace {
+int tests_run = 0;
+int tests_failed = 0;
+void check(bool cond, const char* name) {
+  ++tests_run;
+  if (cond) {
+    std::printf("PASS: %s\n", name);
+  } else {
+    ++tests_failed;
+    std::printf("FAIL: %s\n", name);
   }
-  Frame make_frame(MsgType type, uint32_t seq, const std::string &payload)
-  {
-    Frame f;
-    f.version = VERSION;
-    f.type = type;
-    f.sequence = seq;
-    f.payload.assign(payload.begin(), payload.end());
-    return f;
-  }
-} // anonymous namespace
-int main()
-{
+}
+Frame make_frame(MsgType type, uint32_t seq, const std::string& payload) {
+  Frame f;
+  f.version = VERSION;
+  f.type = type;
+  f.sequence = seq;
+  f.payload.assign(payload.begin(), payload.end());
+  return f;
+}
+}  // anonymous namespace
+int main() {
   // Round trip: serialize then parse should recover the same frame.
   {
     Frame in = make_frame(MsgType::DISPENSE_REQ, 42, "juggernog");
@@ -85,7 +79,8 @@ int main()
     Frame in = make_frame(MsgType::PING, 4, "abc");
     std::vector<uint8_t> wire = serialize(in);
     Frame out;
-    check(parse(wire.data(), wire.size() - 1, out) == ParseResult::LENGTH_MISMATCH,
+    check(parse(wire.data(), wire.size() - 1, out) ==
+              ParseResult::LENGTH_MISMATCH,
           "truncated buffer rejected");
   }
   // Corrupted payload fails CRC.
@@ -106,7 +101,8 @@ int main()
     check(parse(wire.data(), wire.size(), out) == ParseResult::BAD_CRC,
           "corrupted CRC rejected");
   }
-  // CRC-32 known-answer test: "123456789" -> 0xCBF43926 (IEEE 802.3 check value).
+  // CRC-32 known-answer test: "123456789" -> 0xCBF43926 (IEEE 802.3 check
+  // value).
   {
     const uint8_t msg[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
     check(crc32(msg, sizeof(msg)) == 0xCBF43926u, "crc32 known answer");
