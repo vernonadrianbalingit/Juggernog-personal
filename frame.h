@@ -34,6 +34,7 @@ enum class MsgType : uint8_t {
   DISPENSE_ACK = 0x11,
   STATUS_REQ = 0x20,
   STATUS_RES = 0x21,
+  ACK = 0x03,
 };
 // Outcomes of parsing a frame
 enum class ParseResult {
