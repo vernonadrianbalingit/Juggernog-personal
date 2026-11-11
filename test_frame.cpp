@@ -27,7 +27,7 @@ Frame make_frame(MsgType type, uint32_t seq, const std::string& payload) {
 }
 }  // anonymous namespace
 int main() {
-  // Round trip: serialize then parse should recover the same frame.
+  // serialize then parse should hand back exactly what we put in
   {
     Frame in = make_frame(MsgType::DISPENSE_REQ, 42, "juggernog");
     std::vector<uint8_t> wire = serialize(in);
@@ -39,7 +39,8 @@ int main() {
     check(out.sequence == in.sequence, "round trip sequence");
     check(out.payload == in.payload, "round trip payload");
   }
-  // Empty payload is valid.
+  // PING with no payload is legal (thats what the client sends with no
+  // message arg). Wire size should be just header + CRC
   {
     Frame in = make_frame(MsgType::PING, 1, "");
     std::vector<uint8_t> wire = serialize(in);
@@ -49,7 +50,8 @@ int main() {
           "empty payload parses OK");
     check(out.payload.empty(), "empty payload stays empty");
   }
-  // Too short: fewer bytes than header + CRC.
+  // 4 bytes isn't even a full header, parse should bail before reading
+  // any fields
   {
     Frame out;
     uint8_t tiny[4] = {0};
