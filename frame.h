@@ -35,11 +35,11 @@ constexpr size_t MAX_PAYLOAD = 1024;  // keeping this small for now, our
 enum class MsgType : uint8_t {
   PING = 0x01,
   PONG = 0x02,
+  ACK = 0x03,
   DISPENSE_REQ = 0x10,
   DISPENSE_ACK = 0x11,
   STATUS_REQ = 0x20,
   STATUS_RES = 0x21,
-  ACK = 0x03,
 };
 // Outcomes of parsing a frame
 enum class ParseResult {
