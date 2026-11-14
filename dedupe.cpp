@@ -32,15 +32,15 @@ namespace juggernog {
     return Verdict::NEW;
   }
 
-  void DuplicateFilter::Reset(){
+  void DuplicateFilter::reset(){
     last_seen_.clear();
   }
 
-  const char* verdict_to_str(DuplcateFilter::Verdict v){ 
-    switch(v) { 
-      case DuplicateFilter::Verdict::NEW:: return "NEW";
-      case DuplicateFilter::Verdict::DUPLICATE:: return "DUPLICATE";
-      case DuplicateFilter::Verdict::STALE:: return "STALE";
+  const char* verdict_to_str(DuplicateFilter::Verdict v){
+    switch(v) {
+      case DuplicateFilter::Verdict::NEW: return "NEW";
+      case DuplicateFilter::Verdict::DUPLICATE: return "DUPLICATE";
+      case DuplicateFilter::Verdict::STALE: return "STALE";
     }
     return "UNKNOWN";
   }
