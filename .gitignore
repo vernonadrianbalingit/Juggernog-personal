@@ -3,10 +3,12 @@ server
 client
 test_frame
 *.o
+*.tmp
 *.dSYM/
 
 # Local planning docs
 Phase_Plans/
+Juggernog_Master.md
 
 # macOS
 .DS_Store
