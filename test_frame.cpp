@@ -53,12 +53,12 @@ void test_jitter_stays_in_bounds() {
 
   for (int i = 0; i < 1000; ++i) { 
     const int j = apply_jitter(200, 0.25);
-    if (= j < 150 || j > 250) { 
+    if (j < 150 || j > 250) {
       all_in_bounds = false;
       break; //one bad value is enough 
     }
   }
-  check(all_in_bounds, "jitter 200ms +/- 25'%' stays in [150, 250]")
+  check(all_in_bounds, "jitter 200ms +/- 25% stays in [150, 250]");
 
   //zero jitter should give exact value too - timing tests needs that 
   check(apply_jitter(200, 0.0) == 200, "zero jitter returns exact timeout");
@@ -68,7 +68,7 @@ sockaddr_in make_peer(const char* ip, uint16_t port) {
   sockaddr_in a{};
   a.sin_family = AF_INET;
   a.sin_port = htons(port);
-  inet_pthon(AF_INET, ip, &a.sin_addr);
+  inet_pton(AF_INET, ip, &a.sin_addr);
   return a; 
 } 
 
@@ -108,18 +108,18 @@ void test_duplicate_filter_separates_peers() {
 void test_reliable_retransmits_until_acked() { 
   //Responder socket on a temp short lived port 
   const int srv = socket(AF_INET, SOCK_DGRAM, 0);
-  check(srv >= 0, "retransmit test: responder socket created")
+  check(srv >= 0, "retransmit test: responder socket created");
 
   sockaddr_in srv_addr{};
-  srv_addr.sin_family = IF_INET;
+  srv_addr.sin_family = AF_INET;
   srv_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   srv_addr.sin_port = 0; //kernel picks a free port
-  check(bind(srv, reinterpret_cast<sockaddr*>(&srv_addr),&addr_len) == 0,
+  check(bind(srv, reinterpret_cast<sockaddr*>(&srv_addr), sizeof(srv_addr)) == 0,
          "retransmit test: responder bound to loopback");
-  
+
   socklen_t addr_len = sizeof(srv_addr);
-  check(getsocketname(srv, reinterpret_cast<sockaddr*>(&srv_addr), 
-                        &addr_len) == 0, "retransmit test: getsockname reports assigned port ")
+  check(getsockname(srv, reinterpret_cast<sockaddr*>(&srv_addr),
+                        &addr_len) == 0, "retransmit test: getsockname reports assigned port");
 
   constexpr int DROPS = 2; //ignore the first 2, ACK the third. 
 
@@ -308,6 +308,14 @@ int main() {
     const uint8_t msg[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
     check(crc32(msg, sizeof(msg)) == 0xCBF43926u, "crc32 known answer");
   }
+  // Phase 3
+  test_backoff_doubles_and_caps();
+  test_jitter_stays_in_bounds();
+  test_duplicate_filter_basic();
+  test_duplicate_filter_separates_peers();
+  test_reliable_retransmits_until_acked();
+  test_reliable_gives_up_when_peer_is_silent();
+
   std::printf("\n%d/%d tests passed\n", tests_run - tests_failed, tests_run);
   return tests_failed == 0 ? 0 : 1;
 }
