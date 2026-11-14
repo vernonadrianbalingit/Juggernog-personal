@@ -1,11 +1,12 @@
 /*
- * client.cpp — UDP echo client
- * Sends a ping fram (it can optionally carr ya payload
- * waits for the PONG, and prints the reply
- * 
- * Usage:   ./client <server-ip> [message]
- * Example: ./client 127.0.0.1 "hello"
- */
+client.cpp - Juggernog UDP client with stop and wait reliablity 
+
+usage: ./client<server-ip>[lossrate][count]
+  ./client 127.0.0.1        ->one dispense request
+  ./client 127.0.0.1 0.4    ->drop 40% of outbound req
+  ./client 127.0.0.1 0.4 5  ->5 requests, 40 percent loss 
+
+*/
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -16,20 +17,29 @@
 #include <cstring>
 
 #include "frame.h"
+#include "reliable.h"
 
 namespace {
 constexpr int PORT = 9999;
-constexpr int BUF_SIZE = 2048;
 }  // namespace
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <server-ip> [message]\n", argv[0]);
+    fprintf(stderr, "Usage: %s <server-ip> [loss-rate] [count]\n", argv[0]);
     return 1;
   }
 
-  // Same socket() call as the server 
-  int sock = socket(AF_INET, SOCK_DGRAM, 0);
+  // Optional 2nd arg: drop this fraction of OUTBOUND requests on purpose
+  if (argc > 2) {
+    juggernog::set_lossrate(atof(argv[2]));
+    printf("Simulating %.0f%% request loss\n", juggernog::loss_rate() * 100.0);
+  }
+
+  // Optional 3rd arg: how many requests to send (default 1)
+  const int count = (argc > 3) ? atoi(argv[3]) : 1;
+
+  // Same socket() call as the server
+  const int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
     perror("socket() failed");
     return 1;
@@ -50,63 +60,44 @@ int main(int argc, char** argv) {
   // We don't bind here. The kernel will auto assign a random source
   // port when we first send, and run "lsof -i UDP" when exected to see it
 
-  // Build a PING frame
-  juggernog::Frame ping{};
-  ping.version = juggernog::VERSION;
-  ping.type = juggernog::MsgType::PING;
-  ping.sequence = 1;
-  if (argc >= 3) {
-    const char* message = argv[2];
-    size_t message_len = strlen(message);
-    if (message_len > juggernog::MAX_PAYLOAD) {
-      fprintf(stderr, "Message too long (max %zu bytes)\n",
-              juggernog::MAX_PAYLOAD);
-      close(sock);
-      return 1;
+  // Defaults: 200ms base timeout, x2 each retry, cap 3200ms, 5 retries
+  const juggernog::RetryConfig cfg;
+  int succeeded = 0;
+
+  for (int i = 0; i < count; ++i) {
+    // Build a DISPENSE_REQ. Seq starts at 1 and goes up by one per request
+    // so the server's duplicate filter sees each one as NEW exactly once
+    juggernog::Frame req{};
+    req.version = juggernog::VERSION;
+    req.type = juggernog::MsgType::DISPENSE_REQ;
+    req.sequence = static_cast<uint32_t>(i + 1);
+    const char* msg = "amount=30,user=adrian";
+    req.payload.assign(msg, msg + strlen(msg));
+
+    juggernog::Frame reply{};
+    juggernog::SendStats stats{};
+
+    printf("--- seq=%u ---\n", req.sequence);
+    // Replaces the old sendto + blocking recvfrom: sends, waits with a
+    // timeout, retransmits with backoff until ACKed or out of retries
+    const bool ok = juggernog::send_reliable(sock, req, server_addr, cfg,
+                                             reply, stats);
+
+    if (ok) {
+      succeeded++;
+      printf("  ACKed after %d transmission(s)", stats.transmissions);
+      if (stats.rtt_ms >= 0) {
+        printf(", rtt=%dms\n", stats.rtt_ms);
+      } else {
+        printf(", rtt=n/a (Karn/Partridge its retransmitted cannot rtt)\n");
+      }
+    } else {
+      printf("  FAILED after %d transmission(s) -- giving up\n",
+             stats.transmissions);
     }
-    ping.payload.assign(message, message + message_len);
   }
 
-  auto out = juggernog::serialize(ping);
-  printf("Sending PING (%zu bytes on the wire)...\n", out.size());
-
-  ssize_t sent_len =
-      sendto(sock, out.data(), out.size(),
-             0,  // flags
-             reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
-  if (sent_len < 0) {
-    perror("sendto() failed");
-    close(sock);
-    return 1;
-  }
-
-  // Now wait for the echo from the server- no timeout yet
-  uint8_t buf[BUF_SIZE];
-  sockaddr_in from_addr{};
-  socklen_t from_len = sizeof(from_addr);
-
-  ssize_t n = recvfrom(sock, buf, BUF_SIZE,
-                       0,  // flags
-                       reinterpret_cast<sockaddr*>(&from_addr), &from_len);
-  if (n < 0) {
-    perror("recvfrom() failed");
-    close(sock);
-    return 1;
-  }
-
-  juggernog::Frame reply{};
-  auto result = juggernog::parse(buf, static_cast<size_t>(n), reply);
-  if (result != juggernog::ParseResult::OK) {
-    fprintf(stderr, "Got malformed reply: %s\n",
-            juggernog::parse_result_to_str(result));
-    close(sock);
-    return 1;
-  }
-
-  printf("Got reply: type=0x%02X seq=%u payload=%zu bytes\n",
-         static_cast<uint8_t>(reply.type), reply.sequence,
-         reply.payload.size());
-
+  printf("\n%d/%d request(s) delivered.\n", succeeded, count);
   close(sock);
   return 0;
 }
