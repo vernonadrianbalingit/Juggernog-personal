@@ -1,7 +1,8 @@
 #include "crc32.h"
 namespace juggernog {
-// Lookup table for the standard CRC-32 polynomial.
-// Built once at startup, then we just do table lookups for speed.
+// 256 entry lookup table for CRC-32. Doing it bit by bit is 8 shifts per
+// byte, with the table it's one lookup + one xor per byte. The table gets
+// built once at program start (static init of TABLE below) and never changes
 namespace {
 class Crc32Table {
  public:

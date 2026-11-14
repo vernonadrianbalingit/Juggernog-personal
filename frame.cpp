@@ -6,7 +6,9 @@
 
 #include "crc32.h"
 namespace juggernog {
-// Helpers to read/write big-endian fields into byte buffers.
+// Same htons/htonl idea as the sockets code. We go through a temp with
+// memcpy instead of casting the buffer pointer to uint16_t* because the
+// buffer isn't guaranteed to be aligned and that cast is technically UB
 namespace {
 void write_u16(uint8_t* buf, uint16_t v) {
   uint16_t be = htons(v);
@@ -40,42 +42,49 @@ std::vector<uint8_t> serialize(const Frame& frame) {
   if (!frame.payload.empty()) {
     std::memcpy(&buf[HEADER_SIZE], frame.payload.data(), frame.payload.size());
   }
-  // CRC over everything before the CRC field itself
+  // CRC goes last and covers header + payload (everything before it).
+  // Receiver recomputes over the same range and compares
   uint32_t crc = crc32(buf.data(), HEADER_SIZE + frame.payload.size());
   write_u32(&buf[HEADER_SIZE + frame.payload.size()], crc);
   return buf;
 }
 ParseResult parse(const uint8_t* buffer, size_t length, Frame& out) {
-  // 1. Length sanity
+  // STEP 1: Do we even have enough bytes for a header and a CRC?
+  //  If not there's no point reading any fields, we'd run off the buffer
   if (length < HEADER_SIZE + CRC_SIZE) {
     return ParseResult::TOO_SHORT;
   }
-  // 2. Magic
+  // STEP 2: Magic bytes. Anything that doesn't start with "PC" is not ours
+  //  (random UDP traffic, someone running the phase 1 client, etc)
   uint16_t magic = read_u16(&buffer[0]);
   if (magic != MAGIC) {
     return ParseResult::BAD_MAGIC;
   }
-  // 3. Version
+  // STEP 3: Version. We only speak v1 right now
   uint8_t version = buffer[2];
   if (version != VERSION) {
     return ParseResult::BAD_VERSION;
   }
-  // 4. Length field
+  // STEP 4: LENGTH field has to agree with how many bytes recvfrom actually
+  //  handed us. If it doesn't, the packet got truncated or padded somewhere
   uint16_t payload_len = read_u16(&buffer[8]);
   size_t expected = HEADER_SIZE + payload_len + CRC_SIZE;
   if (length != expected) {
     return ParseResult::LENGTH_MISMATCH;
   }
+  //  also cap it, a bogus length should not be able to push us past MAX_PAYLOAD
   if (payload_len > MAX_PAYLOAD) {
     return ParseResult::LENGTH_MISMATCH;
   }
-  // 5. CRC validation — recompute and compare
+  // STEP 5: Recompute the CRC over header + payload and compare against the
+  //  last 4 bytes the sender put there. Any flipped bit in between and these
+  //  won't match
   uint32_t expected_crc = read_u32(&buffer[HEADER_SIZE + payload_len]);
   uint32_t actual_crc = crc32(buffer, HEADER_SIZE + payload_len);
   if (expected_crc != actual_crc) {
     return ParseResult::BAD_CRC;
   }
-  // 6. All good — fill the output struct
+  // STEP 6: everything checked out, now it's safe to copy the fields out
   out.version = version;
   out.type = static_cast<MsgType>(buffer[3]);
   out.sequence = read_u32(&buffer[4]);

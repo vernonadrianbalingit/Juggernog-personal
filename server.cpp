@@ -5,12 +5,11 @@ Binds to UDP port 9999, echoes back whatever bytes arrive
 CS 576 mapping :
   Chapter 1, slide 68 (TCP/DP Sockets Logics) - right column
   Chapter 5, slide 2 (Simple Demultiplexer - Best Effort UDP)
-*/
 
-/*
- * Phase 2: Pourtocol UDP server using binary framing.
- * Receives a frame, validates it, prints info, sends a PONG back.
- */
+Phase 2 update: no longer echoing raw bytes. Every packet gets run
+through parse() from frame.h, bad ones get logged and dropped, and a
+PING gets a PONG back with the same seq number
+*/
 
 #include <arpa/inet.h>   //socketaddr_in, htons, inet_ntop
 #include <sys/socket.h>  //socket, bind, recvfrom, sendto
@@ -85,7 +84,9 @@ int main() {
     char client_ip[INET_ADDRSTRLEN];  // buffer for client IP string
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
 
-    // Try to parse the frame
+    // STEP 5: validate it. parse() does all the checks (magic, version,
+    //  length, CRC). If anything fails we print why and go back to waiting,
+    //  we never reply to garbage
     juggernog::Frame frame{};
     auto result = juggernog::parse(buff, static_cast<size_t>(recv_len), frame);
     if (result != juggernog::ParseResult::OK) {
@@ -100,7 +101,8 @@ int main() {
            static_cast<uint8_t>(frame.type), frame.sequence,
            frame.payload.size());
 
-    // If it was a PING, send a PONG back with the same sequence number.
+    // STEP 6: only PING gets a reply for now. PONG carries the same seq so
+    //  the client can tell which ping it belongs to
     if (frame.type == juggernog::MsgType::PING) {
       juggernog::Frame reply{};
       reply.version = juggernog::VERSION;

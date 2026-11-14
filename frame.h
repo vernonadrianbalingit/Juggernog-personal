@@ -1,20 +1,23 @@
 /*
- * frame.h — Pourtocol binary frame format
- *
- * Wire layout (big-endian for all multi-byte fields):
- *
- * offset 0: MAGIC (2 bytes) always 0x50 0x43
- * offset 2: VERSION (1 byte)
- * offset 3: TYPE (1 byte)
- * offset 4: SEQUENCE (4 bytes)
- * offset 8: LENGTH (2 bytes) payload length
- * offset 10: PAYLOAD (LENGTH bytes)
- * offset 10+LENGTH: CRC32 (4 bytes)
- *
- * CRC-32 is computed over bytes [0 .. 10+LENGTH-1], usingg the
- * IEEE 802.3 polynomial (the one Ethernet uses), initial value 0xFFFFFFFF,
- * final XOR 0xFFFFFFFF, reflected input/output. Matches "crc32" in zlib.
- */
+frame.h - Pourtocol binary frame format
+
+Phase 2: instead of raw bytes, every UDP packet now carries one of these.
+All multi-byte fields are big-endian (network order), same reason we
+htons() the port in the sockets code.
+
+  offset 0:         MAGIC    (2 bytes)  always 0x50 0x43, "PC"
+  offset 2:         VERSION  (1 byte)
+  offset 3:         TYPE     (1 byte)   see MsgType below
+  offset 4:         SEQUENCE (4 bytes)
+  offset 8:         LENGTH   (2 bytes)  how many payload bytes follow
+  offset 10:        PAYLOAD  (LENGTH bytes)
+  offset 10+LENGTH: CRC32    (4 bytes)
+
+The CRC covers everything from offset 0 up to (not including) the CRC
+field itself. It's the standard CRC-32 everyone uses (Ethernet, zlib,
+PNG). Easy way to check a frame by hand: python3 -c "import zlib; ..."
+gives the same number.
+*/
 #pragma once
 #include <cstddef>
 #include <cstdint>
@@ -25,11 +28,14 @@ constexpr uint8_t VERSION = 0x01;
 constexpr size_t HEADER_SIZE = 10;  // magic(2)+ver(1)+type(1)+seq(4)+len(2)
 constexpr size_t CRC_SIZE = 4;
 constexpr size_t FRAMING_OVERHEAD = HEADER_SIZE + CRC_SIZE;
-constexpr size_t MAX_PAYLOAD = 1024;  // intentionally small for now
+constexpr size_t MAX_PAYLOAD = 1024;  // keeping this small for now, our
+                                      // messages are tiny and it stays well
+                                      // under the recv buffer
 // Message types
 enum class MsgType : uint8_t {
   PING = 0x01,
   PONG = 0x02,
+  ACK = 0x03,
   DISPENSE_REQ = 0x10,
   DISPENSE_ACK = 0x11,
   STATUS_REQ = 0x20,
@@ -44,18 +50,21 @@ enum class ParseResult {
   LENGTH_MISMATCH,  // declared length doesn't match buffer size
   BAD_CRC,          // CRC didn't validate
 };
-// A parsed frame in memory.
+// What a frame looks like once we've pulled it apart. The payload gets
+// copied out of the recv buffer so the buffer can be reused.
 struct Frame {
   uint8_t version;
   MsgType type;
   uint32_t sequence;
   std::vector<uint8_t> payload;
 };
-// Serialize a Frame into a byte buffer, ready to send over the wire.
-// Returns the buffer (header + payload + crc).
+// Frame -> bytes. Builds header + payload + crc in one vector, hand the
+// result straight to sendto()
 std::vector<uint8_t> serialize(const Frame& frame);
-// Parse a buffer into a Frame. Returns the result code; on OK, fills `out`.
+// bytes -> Frame. Takes whatever recvfrom() gave us and runs all the
+// checks. Only touches `out` if it returns OK, so on any error `out` is
+// whatever it was before
 ParseResult parse(const uint8_t* buffer, size_t length, Frame& out);
-// Convenience: convert a ParseResult to a human-readable string.
+// so the server can print WHY it dropped a packet instead of just a number
 const char* parse_result_to_str(ParseResult r);
 }  // namespace juggernog

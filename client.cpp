@@ -1,16 +1,12 @@
 /*
  * client.cpp — UDP echo client
- * Sends one message, waits for the echo, prints it, exits.
- *
- * Usage: ./client <server-ip> <message>
- * Example: ./client 127.0.0.1 "hello pourtocol"
+ * Sends a ping fram (it can optionally carr ya payload
+ * waits for the PONG, and prints the reply
+ * 
+ * Usage:   ./client <server-ip> [message]
+ * Example: ./client 127.0.0.1 "hello"
  */
 
-/*
- * Phase 2: Pourtocol UDP client using binary framing.
- * Sends a PING frame (optionally carrying <message> as its payload),
- * waits for PONG, prints the result.
- */
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -32,14 +28,14 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Same socket() call as the server - UDP is symmetric
+  // Same socket() call as the server 
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
     perror("socket() failed");
     return 1;
   }
 
-  // Describe the SERVER's address and port to send to
+  // Describing the SERVER's address and port to send to
   sockaddr_in server_addr{};
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(PORT);
