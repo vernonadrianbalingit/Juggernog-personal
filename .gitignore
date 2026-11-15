@@ -6,9 +6,10 @@ test_frame
 *.tmp
 *.dSYM/
 
-# Local planning docs
+# Local planning docs and raw screenshots (curated copies live in docs/)
 Phase_Plans/
 Juggernog_Master.md
+JuggernogProgressions/
 
 # macOS
 .DS_Store
