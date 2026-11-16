@@ -10,6 +10,7 @@ test_frame
 Phase_Plans/
 Juggernog_Master.md
 JuggernogProgressions/
+UNINSTALL_ESP_IDF.md
 
 # macOS
 .DS_Store
@@ -18,3 +19,8 @@ JuggernogProgressions/
 .vscode/
 .idea/
 *.swp
+
+# ESP-IDF generated files
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
