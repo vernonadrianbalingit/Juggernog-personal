@@ -10,7 +10,7 @@
 typedef enum {
   EVT_BUTTON_POUR, //pour button pressed
   EVT_BUTTON_HALF, //half-shot button pressed
-  EVT_CUP_PRESENT //sensor task: a cup arrived 
+  EVT_CUP_PRESENT, //sensor task: a cup arrived 
   EVT_CUP_GONE, //sensor task: the cup left 
   EVT_TAG, //NFC task: a new tag was scanned (uid, uid_lenset)
   EVT_POUR_DONE, //pump task: pour ran its full time (ms set) 

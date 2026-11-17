@@ -1,6 +1,6 @@
 #pragma once 
 #include "freertos/FreeRTOS.h"
-#include "event_types.h" 
+#include "events_types.h" 
 
 // The one queue every input will feed. EXACTLY ONE task reads it 
 

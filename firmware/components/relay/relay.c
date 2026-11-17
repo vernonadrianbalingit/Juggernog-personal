@@ -2,8 +2,8 @@
 #include <relay.h>
 #include <board.h> 
 
-#define RELAY_LEVEL_ON 0 //active low 
-#define RELAY_LEVEL_OFF 1 
+#define RELAY_LEVEL_ON 1 //active high
+#define RELAY_LEVEL_OFF 0
 
 
 esp_err_t relay_init(void) { 
@@ -16,7 +16,7 @@ esp_err_t relay_init(void) {
     .pull_down_en = GPIO_PULLDOWN_DISABLE,
     .intr_type =    GPIO_INTR_DISABLE,
   };
-  resp_err_t err = gpio_config(&cfg);
+  esp_err_t err = gpio_config(&cfg);
   gpio_set_level(PIN_RELAY, RELAY_LEVEL_OFF);
   return err;
 }

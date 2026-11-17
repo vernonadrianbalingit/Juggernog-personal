@@ -15,7 +15,6 @@ typedef struct {
 
 static button_t s_buttons[] = { 
   {.pin = PIN_BTN_POUR, .evt = EVT_BUTTON_POUR},
-  { .pin = PIN_BTN_HALF, .evt = EVT_BUTTON_HALF},
 };
 
 //RUns in interruptr context: no logging, no blocking, no decisions
@@ -29,16 +28,16 @@ static void IRAM_ATTR button_isr(void *arg) {
   b->last_us = now; 
 
   BaseType_t woken = pdFALSE;
-  event_t e = { .type = b->event, .t_us = now };
+  event_t e = { .type = b->evt, .t_us = now };
   events_post_from_isr(&e, &woken);
   if (woken) { 
     portYIELD_FROM_ISR();
   }
 }
 
-void button_init(void) [ 
+void buttons_init(void) { 
   const gpio_config_t cfg = { 
-    .pin_bit_mask = (1ULL << PIN_BTN_POUR) | (1ULL << PIN_BTN_HALF),
+    .pin_bit_mask = (1ULL << PIN_BTN_POUR),
     .mode = GPIO_MODE_INPUT, 
     .pull_up_en = GPIO_PULLUP_ENABLE,
     .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -53,4 +52,4 @@ void button_init(void) [
   for (size_t i = 0; i < sizeof s_buttons / sizeof s_buttons[0]; i++) {
     ESP_ERROR_CHECK(gpio_isr_handler_add(s_buttons[i].pin, button_isr, &s_buttons[i]));
   }
-]
+}

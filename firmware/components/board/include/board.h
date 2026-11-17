@@ -10,10 +10,10 @@
 
 //Buttons, wired button -> GND, internal pull up on 
 #define PIN_BTN_POUR 4 
-#define PIN_BTN HALF 27
+// PIN_BTN_HALF removed for now: half/full will become a mode toggle later
 
-//Relay module IN pin , Active Low 0 = pump on, 1 = pump off 
-#define PIN_RELAY 15 
+//Relay module IN pin , Active HIGH 1 = pump on, 0 = pump off 
+#define PIN_RELAY 32 //not GPIO 15: its boot-time pull-up would switch an active-high relay on
 
 //HC-SR04. ECHOs come through 1k/2k divider 
 #define PIN_TRIG 5
