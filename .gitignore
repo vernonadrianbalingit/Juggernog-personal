@@ -20,8 +20,10 @@ docs/challenges.md
 .vscode/
 .idea/
 *.swp
+firmware/.cache/
 
 # ESP-IDF generated files
 firmware/build/
 firmware/sdkconfig
 firmware/sdkconfig.old
+firmware/host_tests/build/
