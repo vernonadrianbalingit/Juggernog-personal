@@ -7,6 +7,7 @@
 #include "buttons.h"
 #include "events.h"
 #include "hcsr04.h"
+#include "pn532.h"
 #include "pump.h"
 #include "relay.h"
 
@@ -32,6 +33,7 @@ void app_main(void)
     pump_init();
     buttons_init();          // also installs the GPIO ISR service
     sensor_task_start();
+    nfc_task_start();        // retries on its own until the PN532 answers
     bringup_start();
 
     xTaskCreatePinnedToCore(blink_task, "blink", 2048, NULL, 1, NULL, 1);

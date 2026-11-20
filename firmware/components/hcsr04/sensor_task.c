@@ -7,7 +7,7 @@
 #include "hcsr04.h"
 
 #define PING_PERIOD_MS 60       // lets the previous echo die out
-#define LOG_DISTANCE   1        // 1 while tuning thresholds, 0 afterwards
+#define LOG_DISTANCE   0        // 1 while tuning thresholds, 0 afterwards
 #define LOG_EVERY      16       // print the median about once a second
 
 static const char *TAG = "sensor";

@@ -1,4 +1,5 @@
 #include "bringup.h"
+#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -7,8 +8,8 @@
 
 static const char *TAG = "bringup";
 
-// Milestone 2: button press -> pour, but only with a cup in place.
-// Pulling the cup away stops the pump.
+// Milestone 3: same as milestone 2, plus a scanned tag prints its UID.
+// Button press -> pour, but only with a cup in place. Pulling the cup away stops the pump.
 static void bringup_task(void *arg) {
   bool cup = false;
   event_t e;
@@ -31,6 +32,14 @@ static void bringup_task(void *arg) {
           ESP_LOGW(TAG, "pump busy, press ignored");
         }
         break;
+      case EVT_TAG: { //braces because i declare a variable inside the case
+        char hex[UID_MAX_LEN * 3 + 1] = ""; //3 chars per byte ("A1 ") + the null
+        for (int i = 0; i < e.uid_len; i++) {
+          snprintf(hex + i * 3, 4, "%02X ", e.uid[i]);
+        }
+        ESP_LOGI(TAG, "tag UID (%u bytes): %s", e.uid_len, hex);
+        break;
+      }
       case EVT_POUR_DONE:
       case EVT_POUR_ABORTED:
         ESP_LOGI(TAG, "pump reported %u ms%s", (unsigned)e.ms,
